@@ -102,7 +102,16 @@ chmod a+x ./VRCVideoCacher
 Follow in-app steps to extract youtube cookies
 
 ## SteamVR
-Folks say that recent (c. Mar 01 2026) beta versions of Steam Link run on Linux. And it does! The performance seems very good, but it was difficult to figure out how to get running :<
+Folks say that recent (this was written Mar 09 2026) beta versions of Steam Link run on Linux. And it does! The performance seems very good, but it was difficult to figure out how to get running :<
+
+Steam Link on Linux is actually wildly performant. I was seeing performance similar to what I was seeing on windows. Just a few caveats:
+
+- it takes much longer to launch games for whatever reason
+- it cannot connect to pipewire, no audio. There's something screwy going on
+  - it creates a device, but it is non-functional. Run: `systemctl --user restart pipewire pipewire-pulse wireplumber` to fix things after this happens
+- if you accidentally click on "Desktop" in the steamvr menu (usually showing you your desktop), steam will segfault
+  - after steam crashes, run: `rm -rf /tmp/steam*`
+  
 
 Install SteamVR through steam
 
