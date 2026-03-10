@@ -128,43 +128,6 @@ sudo ufw allow 27036/tcp
 sudo ufw allow 27037/tcp
 ```
 
-Install this steam link dependency (not needed)
-
-```bash
-yay lib32-libpulse
-```
-
-#### Audio with pipewire
-When steam link attempts to connect to pipewire-pulse, pipewire stops working
-
-Replace the following packages:
-
-```
-cachyos-extra-v3/pipewire-alsa
-cachyos-extra-v3/pipewire-audio
-cachyos-extra-v3/wireplumber
-cachyos-extra-v3/libpipewire
-cachyos-extra-v3/libwireplumber
-cachyos-extra-v3/pipewire
-cachyos-extra-v3/gst-plugin-pipewire
-```
-
-
-Don't do this:
-`yay -Rc pipewire-alsa pipewire-audio wireplumber libpipewire libwireplumber pipewire gst-plugin-pipewire`
-
-```bash
-yay -Rc pipewire-pulse pipewire-alsa
-sudo pacman -Syu extra/gst-plugin-pipewire
-
-yay pipewire-pulse
-```
-
-I am using this script as a the starting point:
-https://github.com/l33tlinuxh4x0r/alvr-audio-script/blob/main/avlr-audio.sh
-
-
-
 ### Notes
 
 Steam Link on Linux is actually wildly performant. I was seeing performance similar to what I was seeing on windows.
@@ -282,6 +245,9 @@ systemctl --user restart pipewire pipewire-pulse wireplumber
 ```
 
 TODO figure out why pipewire hangs when SteamVR link starts :<
+
+This script for later reference: 
+https://github.com/l33tlinuxh4x0r/alvr-audio-script/blob/main/avlr-audio.sh
 
 ## WiVRn (Steam Link replacement for Oculus quest headsets)
 I followed this tutorial: https://lvra-gitlab-io-802e4a.gitlab.io/docs/fossvr/wivrn/
