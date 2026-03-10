@@ -139,6 +139,8 @@ Just a few caveats:
   - it creates a device, but it is non-functional. Run: `systemctl --user restart pipewire pipewire-pulse wireplumber` to fix things after this happens
 - if you accidentally click on "Desktop" in the steamvr menu (usually showing you your desktop), steam will segfault
   - after steam crashes, run: `rm -rf /tmp/steam*`
+- you seem to need to launch SteamVR in steam and then attempt to connect with steam link on the headset
+  - no auto-launching type things that happen on Windows
 
 ## WiVRn (Steam Link replacement for Oculus quest headsets)
 I followed this tutorial: https://lvra-gitlab-io-802e4a.gitlab.io/docs/fossvr/wivrn/
