@@ -82,8 +82,10 @@ Check "Force the use of a certain compatibility tool" and select GE proton RTSP
 ### VRC Video Cacher setup
 The Steam version of VRC Video Cacher was non-functional for me
 
+```bash
 sudo mkdir /opt/vrc_video_cacher
 sudo chown $USER:$USER /opt/vrc_video_cacher
+```
 
 Install a JavaScript runtime that yt-dlp wants:
 ```bash
@@ -100,7 +102,7 @@ chmod a+x ./VRCVideoCacher
 Follow in-app steps to extract youtube cookies
 
 ## SteamVR
-Folks say that recent (c. Mar 01 2026) beta versions of Steam Link run on Linux
+Folks say that recent (c. Mar 01 2026) beta versions of Steam Link run on Linux. And it does! The performance seems very good, but it was difficult to figure out how to get running :<
 
 Install SteamVR through steam
 
@@ -111,12 +113,9 @@ In the Steam settings, select the beta version of the client
 Set the following as the SteamVR launch options:
 `QT_QPA_PLATFORM=xcb ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%`
 
-mkdir ~/bkup
-mv ~/.steampath ~/bkup/
-ln -s /home/founta/.steam/sdk64/steam .steampath
+You probably don't need `QT_QPA_PLATFORM=xcb` if you're not on wayland
 
-
-Start it and enter superuser password to let it finish its install
+Start SteamVR and enter superuser password to let it finish its install
 
 Open up ports in the firewall for it
 ```bash
