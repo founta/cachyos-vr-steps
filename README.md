@@ -216,38 +216,132 @@ After restarting SteamVR and restarting pipewire, watching the pipewire-pulse lo
 D pw.core [core.c:64:core_event_error]: 0x55b80f5cbb60: proxy 0x55b80f6f3650 id:54: bound:88 seq:406 res:-2 (No such file or directory) msg:"enum params id:16 (Spa:Enum:ParamId:ProcessLatency) failed"
 ```
 
-Interrogating Google's AI suggested that SteamVR is requesting a latency from pipewire that could not be handled. This could be resolved by editing the `~/.config/pipewire/pipewire-pulse.conf` file. If it does not exist, you can copy the default from `/usr/share/pipewire/pipewire-pulse.conf`
+These are benign, as it turns out.
 
-In that file, I added the following to the `pulse.rules` section:
+The more telling issue was that my Desktop's (Noctalia's) audio tool became non-functional after that. When attempting to run any pipewire commands, such as `pw-dump`, which dumps the current pipewire state to json, hang indefinitely. 
 
-```
-{
-	# If the application is Steam, don't allow it to change the global latency
-	matches = [ { application.process.binary = "steam" } ]
-	actions = {
-		update-props = {
-			pulse.min.quantum = 512/48000
-			pulse.min.req          = 512/48000      # 10.6ms
-			pulse.idle.timeout     = 5
-		}
-	}
-}
-```
-This sets the minimum latency steam can request to 10.6ms. This is also mostly copied from one of the other rules in that configuration file.
+When SteamVR Link starts, it seems that pipewire just entirely stops working. I can see in the system audio setting that a `Meta Quest Pro (Steam Link)` audio device was added, but selecting it does not do anything.
 
-After restarting pipewire-pulse (`systemctl --user restart pipewire-pulse`), it seemed that that error is no longer emitted from `pipewire-pulse`
+This sort of indicates that the last pipewire thing that happened was the creation of that virtual audio device. 
 
-However, this does not fix the audio situation. There is still no output. When SteamVR Link starts, it seems that pipewire just entirely stops working. I can see in the system audio setting that a `Meta Quest Pro (Steam Link)` audio device was added, but selecting it does not do anything.
-
-To show the available pipewire devices, you can run: `wpctl status`. However, this just hangs forever after Steam Link starts until pipewire, pipewire-pulse and wireplumber are restarted:
+Restarting pipewire restores audio functionality, but Steam Link is non-functional audio-wise, still
 ```
 systemctl --user restart pipewire pipewire-pulse wireplumber
 ```
 
+I eventually wrote the following script to attempt to print the state of pipewire before things break. Here's the script:
+```python3
+import subprocess, time
+
+try:
+    vrserver_outputs = []
+    cmd = ["pw-dump", "--no-colors"]
+    while True:
+        pw_dump = subprocess.check_output(cmd).decode("utf-8")
+        if "Meta Quest Pro" in pw_dump:
+            vrserver_outputs.append(pw_dump)
+        time.sleep(0.01)
+except subprocess.CalledProcessError:
+    pass
+except KeyboardInterrupt:
+    pass
+
+print("num vrserver info: %d" % (len(vrserver_outputs)))
+if len(vrserver_outputs):
+    with open("vrserver_pw_info.txt", "w") as f:
+        for out in vrserver_outputs:
+            f.write(out)
+            f.write("\n")
+```
+
+This runs `pw-dump` over and over and looks for SteamVR's audio device. I somehow got lucky and was able to catch the SteamVR audio device before things broke. This is part of the audio sink (eg speakers) node it created:
+```
+  {
+    "id": 80,
+    "type": "PipeWire:Interface:Node",
+    "version": 3,
+    "permissions": [ "r", "w", "x", "m" ],
+    "info": {
+      "max-input-ports": 129,
+      "max-output-ports": 0,
+      "change-mask": [ "input-ports", "output-ports", "state", "props", "params" ],
+      "n-input-ports": 0,
+      "n-output-ports": 0,
+      "state": "suspended",
+      "error": null,
+      "props": {
+        "adapt.follower.spa-node": "",
+        "audio.channels": 2,
+        "audio.rate": 48000,
+        "client.id": 76,
+        "clock.quantum-limit": 8192,
+        "device.icon-name": "network-wireless",
+        "factory.id": 9,
+        "library.name": "audioconvert/libspa-audioconvert",
+        "media.category": "Playback",
+        "media.class": "Audio/Sink",
+        "media.name": "vrlink_output",
+        "media.role": "Game",
+        "media.software": "Steam Link",
+        "media.type": "Audio",
+        "node.autoconnect": true,
+        "node.description": "🥽 Meta Quest Pro (Steam Link)",
+        "node.loop.name": "data-loop.0",
+        "node.name": "vrserver",
+        "node.want-driver": true,
+        "object.id": 80,
+        "object.register": false,
+        "object.serial": 523,
+        "port.group": "stream.0",
+        "steamvr.internal": true,
+        "stream.is-live": true
+...
+```
+
+There are no input or output ports! What the frick kind of audio thing is this?
+
+Noctalia and Quickshell are kind of new things. My best bet at this 
+point is that something in Quickshell is breaking when this zero-node 
+interface, which is asking to be autoconnected (I think), shows up.
+
+At least I didn't see anything obvious to indicate that SteamVR was 
+causing a pipewire issue in its logs (other than timeouts), and I 
+didn't see anything obviously wrong happening in the pipewire logs 
+(other than this "vrserver" node being suspended immediately after 
+creation, presumably due to it not having any inputs or outputs).
+
+Looking at the logs they posted to GitHub, these two github users
+were able to get SteamVR Link audio working on CachyOS using the KDE 
+Plasma desktop environment (or at least the SteamVR Link pipewire stuff
+was able to set up the vrserver node; I saw some evidence of it connecting
+nodes like so in the 
+[steam-logs.tar.gz](https://github.com/user-attachments/files/24936684/steam-logs.tar.gz) 
+posted [here](https://github.com/ValveSoftware/SteamVR-for-Linux/issues/861):
+```
+Thu Jan 29 2026 23:43:28.323135 [Info] - [CVRPipewireAppManager] Creating link from OUT(MAX:0/2) 118:176 (0x7f283800a130) to IN(MAX:2/2) 154:159 (0x7f283800aef0) (class: 1)
+Thu Jan 29 2026 23:43:28.323149 [Info] - [CVRPipewireAppManager] Creating link from OUT(MAX:0/2) 118:190 (0x7f283800a260) to IN(MAX:2/2) 154:187 (0x7f283800b150) (class: 1)
+```
+
+The next step is to install KDE plasma and try things out:
+```bash
+yay plasma-desktop
+```
+
 TODO figure out why pipewire hangs when SteamVR link starts :<
+
+Maybe don't use the beta version of SteamVR?
+- same issue
 
 This script for later reference: 
 https://github.com/l33tlinuxh4x0r/alvr-audio-script/blob/main/avlr-audio.sh
+
+You can set the audio driver for VRChat to ALSA instead of pulse if you want, but there isn't a point
+
+```bash
+yay protontricks
+yay pipewire-alsa
+protontricks 438100 sound=alsa
+```
 
 ## WiVRn (Steam Link replacement for Oculus quest headsets)
 I followed this tutorial: https://lvra-gitlab-io-802e4a.gitlab.io/docs/fossvr/wivrn/
