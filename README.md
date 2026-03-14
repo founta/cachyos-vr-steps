@@ -1,11 +1,20 @@
-I installed CachyOS from USB with systemd-boot bootloader, 
-ext4 partition, and niri+noctalia display manager
+These are the steps I've taken to install software on CachyOS with
+intention to play SteamVR games on it. 
+
+My hardware:
+- AMD 7900XT GPU
+- intel CPU
+- Quest Pro headset
+
+During USB installation of CachyOS, I chose the systemd-boot bootloader, 
+the ext4 filesystem for my root partition, and the niri+noctalia display manager
 
 # Generic package installs
  
 ```bash
 sudo pacman -Syu geany yay #install the geany text editor and the yay package manager
 
+yay librewolf #librewolf web browser
 yay htop #htop system monitor tool
 ```
 
@@ -39,10 +48,18 @@ An example output file that works for me:
     scale 1 // No scaling (use 2 for HiDPI)
 }
 
+// note that the logical size of 4k monitors is 1440p (2560x1440)
+//  as seen in `niri msg outputs`
+// my monitor layout is the 1080p wide one on the left, and 4k
+//  on the right. Their bottoms are lined up. 
+// the below coordinate system is positive x = right, positive y = down
+// origin is upper left
+// to get the bottoms of the monitors to line up, 
+//  smaller y = (bigger height - smaller height) = 1440 - 1080 = 360
 output "LG Electronics LG HDR WFHD 0x0004D9E3" {
 	mode "2560x1080@59.978"
 	scale 1
-	position x=0 y=0
+	position x=0 y=360
 }
 output "LG Electronics LG HDR WFHD 0x0004D9E3" {
 	mode "3840x2160@59.997"
@@ -50,6 +67,30 @@ output "LG Electronics LG HDR WFHD 0x0004D9E3" {
 	position x=2560 y=0
 }
 ```
+
+# LACT (for AMD GPUs)
+When running VR games, AMD GPUs may drop some frames due to the GPU
+entering a power save mode. The LACT overclocking tool can be used to
+fix this.
+
+I followed this guide to install it and set it up:
+https://github.com/chaosmaou/wivrn-guide?tab=readme-ov-file#lact 
+
+```bash
+yay lact
+
+sudo systemctl enable lactd
+sudo systemctl restart lactd
+
+lact #start LACT's UI
+```
+
+- In the OC tab, enable AMD overclocking (takes a minute or so)
+- Under Performance, set the "Performance Level" to "Manual". Set the "Power Profile Mode" to "VR"
+- Hit apply at the bottom of the window
+
+Now at some point, reboot in order for the overclocking to actually
+take effect
 
 # Steam
 Install the CachyOS Steam package:
@@ -71,20 +112,26 @@ asdf install protonge-rtsp latest
 ```
 
 ## VRChat
-In steam, install:
+In steam, I install:
 - VRChat
 - XSOverlay
 - OVR advanced settings
 
-Right click on VRChat -> Properties -> Compatibility
-Check "Force the use of a certain compatibility tool" and select GE proton RTSP
+1. Right click on VRChat -> Properties -> Compatibility
+2. Check "Force the use of a certain compatibility tool" and select GE proton RTSP
 
 ### VRC Video Cacher setup
 The Steam version of VRC Video Cacher was non-functional for me
 
 ```bash
-sudo mkdir /opt/vrc_video_cacher
-sudo chown $USER:$USER /opt/vrc_video_cacher
+#make a directory for local binaries
+mkdir $HOME/.bin/
+
+#add it to the path, so you can run them without providing the
+# directory name
+echo 'set -gx PATH $PATH $HOME/.bin/' > ~/.config/fish/conf.d/dotbin.fish
+
+#and open a new terminal
 ```
 
 Install a JavaScript runtime that yt-dlp wants:
@@ -93,16 +140,19 @@ yay deno
 ```
 
 ```bash
-cd /opt/vrc_video_cacher
+#download the latest VRCVideoCacher
+cd ~/.bin/
 wget https://github.com/EllyVR/VRCVideoCacher/releases/latest/download/VRCVideoCacher
 
-chmod a+x ./VRCVideoCacher
+chmod a+x ./VRCVideoCacher #mark VRCVideoCacher as executable
+
+#start it like so:
+VRCVideoCacher
 ```
 
 Follow in-app steps to extract youtube cookies
 
 ## SteamVR
-Folks say that recent (this was written Mar 09 2026) beta versions of Steam Link run on Linux. And it does! The performance seems very good, but it was difficult to figure out how to get running :<
 
 ### Installation and setup
 Install SteamVR through steam
@@ -117,30 +167,6 @@ Set the following as the SteamVR launch options:
 You probably don't need `QT_QPA_PLATFORM=xcb` if you're not on wayland
 
 Start SteamVR and enter superuser password to let it finish its install
-
-Open up ports in the firewall for it
-```bash
-sudo ufw allow 10400/udp
-sudo ufw allow 10401/udp
-sudo ufw allow 27031/udp
-sudo ufw allow 27036/udp
-sudo ufw allow 27036/tcp
-sudo ufw allow 27037/tcp
-```
-
-### Notes
-
-Steam Link on Linux is actually wildly performant. I was seeing performance similar to what I was seeing on windows.
-I went into an Udon Saber world in VR Chat, and it played just about as smoothly as it does in Windows!
-
-Just a few caveats:
-- it takes much longer to launch games for whatever reason
-- it cannot connect to pipewire, no audio. There's something screwy going on
-  - it creates a device, but it is non-functional. Run: `systemctl --user restart pipewire pipewire-pulse wireplumber` to fix things after this happens
-- if you accidentally click on "Desktop" in the steamvr menu (usually showing you your desktop), steam will segfault
-  - after steam crashes, run: `rm -rf /tmp/steam*`
-- you seem to need to launch SteamVR in steam and then attempt to connect with steam link on the headset
-  - no auto-launching type things that happen on Windows
 
 ### Debugging
 
@@ -176,7 +202,48 @@ Available platform plugins are: xcb.
 When googling that error, the following Reddit post (and Google's chatbot) 
 led me to the solution: https://www.reddit.com/r/archlinux/comments/1910hru/qt_apps_crash_on_launch_qtqpaplugin_could_not/
 
-#### SteamVR doesn't play audio
+### Notes
+
+SteamVR on Linux seems to have high performance, but is riddled with bugs. I was seeing performance similar to what I was seeing on windows.
+I went into an Udon Saber world in VR Chat, and it played just about as smoothly as it does in Windows!
+
+Just a few caveats:
+- When using Steam Link, there are audio issues, at least on my hardware.
+  - it creates a device, but it is non-functional. Run: `systemctl --user restart pipewire pipewire-pulse wireplumber` to fix things after this happens
+  - see https://github.com/ValveSoftware/SteamVR-for-Linux/issues/873
+- if you accidentally click on "Desktop" in the steamvr menu (usually showing you your desktop), steam will segfault
+  - after steam crashes, run: `rm -rf /tmp/steam*`
+
+## SteamVR streaming apps
+
+### Steam Link
+> [!CAUTION]
+> Steam Link has non-functional audio as of March 14 2026
+> It works for some, but they need to manually connect inputs/outputs
+> to the Steam Link audio devices. Try using the `helvum` or
+> `qpwgraph` utilities to manually configure the Steam Link audio nodes.
+> See https://github.com/ValveSoftware/SteamVR-for-Linux/issues/873 and
+> https://github.com/ValveSoftware/SteamVR-for-Linux/issues/861
+
+Folks say that recent (this was written Mar 09 2026) beta versions of Steam Link run on Linux. And it does!
+
+To get it running:
+- Install the Steam Link app on your headset (eg from the Meta store).
+- Add firewall rules for Steam Link traffic (see below)
+- Launch SteamVR in steam and then attempt to connect with Steam Link on the headset
+  - no auto-SteamVR-launching type things that happen on Windows
+
+Firewall rules:
+```bash
+sudo ufw allow 10400/udp
+sudo ufw allow 10401/udp
+sudo ufw allow 27031/udp
+sudo ufw allow 27036/udp
+sudo ufw allow 27036/tcp
+sudo ufw allow 27037/tcp
+```
+
+#### Hopeless audio debugging notes
 CachyOS with the Noctalia+Niri desktop environment use the `pipewire` audio utility. 
 SteamVR uses ALSA and PulseAudio for audio, though. To help with that, there is the `pipewire-pulse` utility
 that translates PulseAudio to pipewire.
@@ -300,42 +367,47 @@ This runs `pw-dump` over and over and looks for SteamVR's audio device. I someho
 
 There are no input or output ports! What the frick kind of audio thing is this?
 
-Noctalia and Quickshell are kind of new things. My best bet at this 
-point is that something in Quickshell is breaking when this zero-node 
-interface, which is asking to be autoconnected (I think), shows up.
-
-At least I didn't see anything obvious to indicate that SteamVR was 
+I didn't see anything obvious to indicate that SteamVR was 
 causing a pipewire issue in its logs (other than timeouts), and I 
 didn't see anything obviously wrong happening in the pipewire logs 
 (other than this "vrserver" node being suspended immediately after 
 creation, presumably due to it not having any inputs or outputs).
 
-Looking at the logs they posted to GitHub, these two github users
+Looking at the logs others posted to GitHub, a couple users
 were able to get SteamVR Link audio working on CachyOS using the KDE 
 Plasma desktop environment (or at least the SteamVR Link pipewire stuff
 was able to set up the vrserver node; I saw some evidence of it connecting
 nodes like so in the 
 [steam-logs.tar.gz](https://github.com/user-attachments/files/24936684/steam-logs.tar.gz) 
-posted [here](https://github.com/ValveSoftware/SteamVR-for-Linux/issues/861):
+posted [here](https://github.com/ValveSoftware/SteamVR-for-Linux/issues/861)):
 ```
 Thu Jan 29 2026 23:43:28.323135 [Info] - [CVRPipewireAppManager] Creating link from OUT(MAX:0/2) 118:176 (0x7f283800a130) to IN(MAX:2/2) 154:159 (0x7f283800aef0) (class: 1)
 Thu Jan 29 2026 23:43:28.323149 [Info] - [CVRPipewireAppManager] Creating link from OUT(MAX:0/2) 118:190 (0x7f283800a260) to IN(MAX:2/2) 154:187 (0x7f283800b150) (class: 1)
 ```
 
-The next step is to install KDE plasma and try things out:
-```bash
-yay plasma-desktop
-```
-
-TODO figure out why pipewire hangs when SteamVR link starts :<
-
 Maybe don't use the beta version of SteamVR?
 - same issue
+
+If you use the `pipewire-media-session` pipewire session manager instead
+of `wireplumber`, pipewire at least doesn't hang indefinitely when Steam
+Link makes its nodes. Note that this session manager is deprecated at the
+time of writing (Mar 14 2026).
+
+```bash
+yay pipewire-media-session
+```
+
+Anywho, I give up debugging. WiVRn audio works fine and Steam Link is able
+to interface with pipewire (to make those initial devices), so this is 
+probably a Steam Link bug.
+
+I later tested that this bug is also present on my machine when running a fresh Cachy install
+with the KDE desktop, and on a fresh EndeavourOS install with the GNOME desktop.
 
 This script for later reference: 
 https://github.com/l33tlinuxh4x0r/alvr-audio-script/blob/main/avlr-audio.sh
 
-You can set the audio driver for VRChat to ALSA instead of pulse if you want, but there isn't a point
+You can set the audio driver for VRChat to ALSA instead of pulse if you want, but there isn't a point, doesn't help
 
 ```bash
 yay protontricks
@@ -343,14 +415,62 @@ yay pipewire-alsa
 protontricks 438100 sound=alsa
 ```
 
-## WiVRn (Steam Link replacement for Oculus quest headsets)
+#### Goofy solution (dont do this)
+One thing I used for a single night (and it was awful) was an audio stream
+I ran from a server on my PC and accessed through the Quest's web browser ...
+
+It sounds like a bad idea and it was :)
+
+Dependencies:
+```bash
+yay mediamtx-bin #media server
+
+#write mediamtx configuration
+echo "paths:
+  vr: {}
+" > ~/.config/mediamtx/mediamtx.yml
+
+#start and enable the media server
+sudo systemctl enable mediamtx
+sudo systemctl start mediamtx
+
+#the default WebRTC port for mediaMTX is 8889
+sudo ufw allow 8889/tcp
+
+#we're going to make an audio processing pipeline using GStreamer, so install
+# some GStreamer components
+yay gst-plugins-good
+yay gst-plugins-bad
+yay gst-plugins-ugly
+
+export CARGO_BUILD_JOBS=8
+yay gst-plugins-rs #this takes forever to compile
+
+#I set the number of build jobs lower because the compilation by default
+# uses all CPU cores. For whatever reason rustc was segfaulting when that
+# was going on
+```
+
+Now you can use this python script to start an audio stream on
+`http://{your desktop's IP address}:8889/vr`. You can connect to it from
+any device on your LAN from their web browser (eg your headset!).
+
+The script creates a virtual audio sink and sets it as the default playback
+device, and makes a GST pipeline to push the audio to the media server.
+
+See the "start_vr_audio.py" python script in this repository.
+
+## WiVRn (SteamVR replacement for Oculus quest headsets)
+WiVRn is an all-in-one replacement for SteamVR and whatever streaming
+app used for streaming video from your headset.
+
 I followed this tutorial: https://lvra-gitlab-io-802e4a.gitlab.io/docs/fossvr/wivrn/
 
 WiVRn github: https://github.com/WiVRn/WiVRn
 
 Comprehensive guide: https://github.com/chaosmaou/wivrn-guide
 
-
+### Installation
 Install package manager's wivrn and also OpenComposite:
 
 ```bash
@@ -376,27 +496,16 @@ sudo ufw allow 9757/tcp
 sudo ufw allow 9757/udp
 ```
 
-Start the WiVRn dashboard on your PC and start going through the setup steps
-Install the WiVRn app through the Meta store
-Follow steps in the dashboard to finish setup
+- Start the WiVRn dashboard on your PC and start going through the setup steps
+- Install the WiVRn app through the Meta store
+- Follow steps in the dashboard to finish setup
 
-Make sure to update all previously SteamVR apps with the following 
+Make sure to update all previously installed SteamVR apps with the following 
 launch option as suggested by the wivrn dashboard:
 
-`PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1 %command%`
-
-### LACT (for AMD GPUs)
 ```bash
-yay lact
-
-sudo systemctl enable lactd
-sudo systemctl restart lactd
-
-lact #start LACT's UI
+PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1 %command%
 ```
-In the OC tab, enable AMD overclocking
-
-Set up LACT following this guide: https://github.com/chaosmaou/wivrn-guide?tab=readme-ov-file#lact
 
 # Tracking setup
 ## SlimeVR
@@ -414,9 +523,10 @@ yay kicad
 yay code #visual studio code
 ```
 
-# Add Windows boot entry to systemd-boot
+# Add Windows boot entry to bootloader
 For my system that has Windows installed on another drive
 
+## systemd-boot
 Reference: https://wiki.archlinux.org/title/Systemd-boot
 
 ```bash
@@ -443,7 +553,6 @@ sudo reboot now
 
 #they do!
 ```
-
 
 ## rEFInd bootloader setup (nonfunctional)
 I did not get this to work -- refind does not launch after MOK enrollment
