@@ -287,6 +287,7 @@ Face tracking on
 ### Steam Link
 > [!CAUTION]
 > Steam Link has non-functional audio as of March 14 2026
+>
 > It works for some, but they need to manually connect inputs/outputs
 > to the Steam Link audio devices. Try using the `helvum` or
 > `qpwgraph` utilities to manually configure the Steam Link audio nodes.
@@ -637,8 +638,6 @@ v1.1.1.0 seems to be bugged: https://github.com/dfgHiatus/VRCFaceTracking.Avalon
 
 Also, make sure to start VRCFT Avalonia before starting VR Chat
 
-First, download the v1.0.0.0 AppImage from: 
-
 Install (v1.0.0.0 appimage):
 ```bash
 #prereqs
@@ -657,7 +656,7 @@ Add modules for your eye/face tracking solution
 Set autostart to on in the settings
 
 #### SteamVR
-In the SteamVR settings after connecting your headset, enable OS and sending of eye and face tracking info.
+In the SteamVR settings after connecting your headset, enable OSC and sending of eye and face tracking info.
 Select 9015(ALT) as the output port.
 
 # SteamVR start script
@@ -713,20 +712,10 @@ yay unityhub #AUR
 ## ALCOM
 Open source VRC Creator Companion
 
+### Install from AUR
 ```bash
 yay alcom-bin #AUR
 ```
-
-## Unity setup
-
-Under Edit->Project Settings, go to the Player section. Uncheck the 
-"Auto Graphics API for Linux" box. Re-arrange the options such that the
-Vulkan API is first in the list.
-
-Otherwise, liltoon shaders will not render properly in the editor:
-https://github.com/lilxyzw/lilToon/issues/329
-
-You seem to have to do this every time you open your project :<
 
 ### AppImage (doesn't seem to work, white screen issue as mentioned in the VRLA wiki)
 Download appimage from: https://vrc-get.anatawa12.com/en/alcom/
@@ -739,6 +728,17 @@ mv ~/Downloads/alcom*.AppImage ./
 #set the app image as executable
 chmod a+x ./alcom*.AppImage
 ```
+
+## Unity setup
+
+Under Edit->Project Settings, go to the Player section. Uncheck the 
+"Auto Graphics API for Linux" box. Re-arrange the options such that the
+Vulkan API is first in the list.
+
+Otherwise, liltoon shaders will not render properly in the editor:
+https://github.com/lilxyzw/lilToon/issues/329
+
+You seem to have to do this every time you open your project :<
 
 # Miscellaneous packages
 
