@@ -3,19 +3,22 @@ intention to play SteamVR games on it.
 
 My hardware:
 - AMD 7900XT GPU
-- intel CPU
+- Intel CPU
 - Quest Pro headset
 
+And I have secure boot enabled because of windows 11. bleh.
+
 During USB installation of CachyOS, I chose the systemd-boot bootloader, 
-the ext4 filesystem for my root partition, and the niri+noctalia display manager
+the ext4 filesystem for my root partition, and the niri+noctalia display manager.
 
 # Generic package installs
  
 ```bash
 sudo pacman -Syu geany yay #install the geany text editor and the yay package manager
 
-yay librewolf #librewolf web browser
+yay floorp #web browser
 yay htop #htop system monitor tool
+yay viewnior #image viewer
 ```
 
 To search packages: `yay -Ss {package name}`
@@ -36,17 +39,12 @@ Run the following to see your currently connected display configuration:
 Open this file in geany to edit it: `~/.config/niri/cfg/display.kdl`
 and manually enter your display configuration
 
-An example output file that works for me:
+The output file that works for me:
 ```
 // ────────────── Output Configuration ──────────────
 // You can run `niri msg outputs` to get the correct name for your displays.
 // You will have to remove "/-" and edit it before it takes effect.
 // https://github.com/YaLTeR/niri/wiki/Configuration:-Outputs
-
-/- output "DP-1" {
-    mode "2560x1440@359.979" // Set resolution and refresh rate
-    scale 1 // No scaling (use 2 for HiDPI)
-}
 
 // note that the logical size of 4k monitors is 1440p (2560x1440)
 //  as seen in `niri msg outputs`
@@ -89,7 +87,7 @@ lact #start LACT's UI
 - Under Performance, set the "Performance Level" to "Manual". Set the "Power Profile Mode" to "VR"
 - Hit apply at the bottom of the window
 
-Now at some point, reboot in order for the overclocking to actually
+Now, at some point, reboot in order for the overclocking to actually
 take effect
 
 # Steam
@@ -121,7 +119,7 @@ In steam, I install:
 2. Check "Force the use of a certain compatibility tool" and select GE proton RTSP
 
 ### VRC Video Cacher setup
-The Steam version of VRC Video Cacher was non-functional for me
+The Steam version of VRC Video Cacher was non-functional for me.
 
 ```bash
 #make a directory for local binaries
@@ -134,12 +132,14 @@ echo 'set -gx PATH $PATH $HOME/.bin/' > ~/.config/fish/conf.d/dotbin.fish
 #and open a new terminal
 ```
 
-Install a JavaScript runtime that yt-dlp wants:
-```bash
-yay deno
-```
+You may need to start up VRC at least once before running the app to 
+have it store your youtube cookies from their firefox plugin.
 
+To install:
 ```bash
+#Install a JavaScript runtime that yt-dlp wants:
+yay deno
+
 #download the latest VRCVideoCacher
 cd ~/.bin/
 wget https://github.com/EllyVR/VRCVideoCacher/releases/latest/download/VRCVideoCacher
@@ -152,6 +152,20 @@ VRCVideoCacher
 
 Follow in-app steps to extract youtube cookies
 
+#### Allow cached videos to play in VRC (non functional)
+In the settings, set the web server URL to: `http://localhost.youtube.com:9696`
+
+Add an alias to localhost (they will be served from "localhost.youtube.com" 
+instead of "localhost.com" and VRC should be happier with that):
+```
+echo "127.0.0.1 localhost.youtube.com" | sudo tee -a /etc/hosts
+```
+
+This didn't seem to work. VRC Video Cacher seems to have served the cached video, but 
+VRChat rejects it for whatever reason.
+
+I've just disabled video caching for now.
+
 ## SteamVR
 
 ### Installation and setup
@@ -159,14 +173,17 @@ Install SteamVR through steam
 
 Right click, properties and select the "beta" version under "Game versions and betas"
 
-In the Steam settings, select the beta version of the client
+In the Steam settings under Interface, select the beta version of the client and restart
 
 Set the following as the SteamVR launch options:
-`QT_QPA_PLATFORM=xcb ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%`
+```
+QT_QPA_PLATFORM=xcb ~/.local/share/Steam/steamapps/common/SteamVR/bin/vrmonitor.sh %command%
+```
 
-You probably don't need `QT_QPA_PLATFORM=xcb` if you're not on wayland
+You might not need `QT_QPA_PLATFORM=xcb` if you're not on a tiling window manager. 
+Not really sure when it's needed, but it was for me :)
 
-Start SteamVR and enter superuser password to let it finish its install
+Start SteamVR and enter superuser password if prompted to let it finish its install
 
 ### Debugging
 
@@ -204,7 +221,7 @@ led me to the solution: https://www.reddit.com/r/archlinux/comments/1910hru/qt_a
 
 ### Notes
 
-SteamVR on Linux seems to have high performance, but is riddled with bugs. I was seeing performance similar to what I was seeing on windows.
+SteamVR on Linux seems to have high performance, but is buggy. I was seeing performance similar to what I was seeing on windows.
 I went into an Udon Saber world in VR Chat, and it played just about as smoothly as it does in Windows!
 
 Just a few caveats:
@@ -212,9 +229,60 @@ Just a few caveats:
   - it creates a device, but it is non-functional. Run: `systemctl --user restart pipewire pipewire-pulse wireplumber` to fix things after this happens
   - see https://github.com/ValveSoftware/SteamVR-for-Linux/issues/873
 - if you accidentally click on "Desktop" in the steamvr menu (usually showing you your desktop), steam will segfault
-  - after steam crashes, run: `rm -rf /tmp/steam*`
+  - after steam crashes, run: `rm -rf /tmp/steam*` before restarting (otherwise it doesn't start) 
 
 ## SteamVR streaming apps
+
+### ALVR
+ALVR is an open source replacement for eg Air Link, Virtual Desktop, Steam Link.
+
+I followed these steps for installation: https://github.com/alvr-org/ALVR/blob/master/wiki/Installation-guide.md
+
+#### Installation
+Install Rust compilation tools:
+```bash
+#the following command is from: https://rust-lang.org/learn/get-started/
+# select the standard installation option
+yay rustup
+rustup default stable
+rustup install
+source ~/.config/fish/conf.d/rustup.fish
+```
+
+Install ALVR:
+```bash
+export CARGO_BUILD_JOBS=8
+yay alvr
+```
+
+Start ALVR with: `alvr_dashboard`
+
+Follow in-app settings to install. After installation, go to the Installation page
+and press "Register ALVR Driver"
+
+Install the ALVR app from the meta store on your headset
+
+#### Settings
+ALVR has a massive number of settings. The following worked OK for me
+(with the rest of the settings at default):
+
+```
+# Presets
+Preferred framerate 90Hz
+Codec preset H264
+Eye and face tracking VRCFaceTracking
+
+# Video
+Bitrate constant 150Mbps
+Image corruption fix on
+Foveated encoding on
+10-bit encoding: on
+
+# Headset
+Controller emulation mode = Quest Pro
+Emulation mode = Quest Pro
+Face tracking on
+```
 
 ### Steam Link
 > [!CAUTION]
@@ -407,7 +475,8 @@ with the KDE desktop, and on a fresh EndeavourOS install with the GNOME desktop.
 This script for later reference: 
 https://github.com/l33tlinuxh4x0r/alvr-audio-script/blob/main/avlr-audio.sh
 
-You can set the audio driver for VRChat to ALSA instead of pulse if you want, but there isn't a point, doesn't help
+You can set the audio driver for VRChat to ALSA instead of pulse if you 
+want, but there isn't a point, doesn't help
 
 ```bash
 yay protontricks
@@ -415,8 +484,11 @@ yay pipewire-alsa
 protontricks 438100 sound=alsa
 ```
 
-#### Goofy solution (dont do this)
-One thing I used for a single night (and it was awful) was an audio stream
+Get the steam ID for a game by going to the store page and copying the
+number from the URL
+
+#### Goofy solution (don't do this)
+One thing I used for a single night (and it was not great) was an audio stream
 I ran from a server on my PC and accessed through the Quest's web browser ...
 
 It sounds like a bad idea and it was :)
@@ -427,7 +499,8 @@ yay mediamtx-bin #media server
 
 #write mediamtx configuration
 echo "paths:
-  vr: {}
+  vr: 
+    source: {}
 " > ~/.config/mediamtx/mediamtx.yml
 
 #start and enable the media server
@@ -439,12 +512,14 @@ sudo ufw allow 8889/tcp
 
 #we're going to make an audio processing pipeline using GStreamer, so install
 # some GStreamer components
+yay gst-devtools
+yay gst-plugin-pipewire
 yay gst-plugins-good
 yay gst-plugins-bad
 yay gst-plugins-ugly
 
 export CARGO_BUILD_JOBS=8
-yay gst-plugins-rs #this takes forever to compile
+yay gst-plugins-rs-git #this takes forever to compile
 
 #I set the number of build jobs lower because the compilation by default
 # uses all CPU cores. For whatever reason rustc was segfaulting when that
@@ -460,7 +535,7 @@ device, and makes a GST pipeline to push the audio to the media server.
 
 See the "start_vr_audio.py" python script in this repository.
 
-## WiVRn (SteamVR replacement for Oculus quest headsets)
+## WiVRn (SteamVR replacement for wireless headsets)
 WiVRn is an all-in-one replacement for SteamVR and whatever streaming
 app used for streaming video from your headset.
 
@@ -471,14 +546,13 @@ WiVRn github: https://github.com/WiVRn/WiVRn
 Comprehensive guide: https://github.com/chaosmaou/wivrn-guide
 
 ### Installation
-Install package manager's wivrn and also OpenComposite:
+Install AUR wivrn and also xrizer:
 
 ```bash
-yay wivrn-server
 yay wivrn-dashboard
 
-#install opencomposite -- OpenVR runtime without SteamVR
-yay opencomposite-git
+#install xrizer -- OpenVR runtime without SteamVR
+yay xrizer
 ```
 
 WiVRn does system discovery using the following service, need to enable it:
@@ -509,18 +583,170 @@ PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1 %command%
 
 # Tracking setup
 ## SlimeVR
-TODO
+The LVRA wiki has very good steps on SlimeVR installation: https://wiki.vronlinux.org/docs/slimevr/
+
+The SlimeVR AppImage here does not work for me: https://github.com/SlimeVR/SlimeVR-Server/releases/latest/download/SlimeVR-amd64.appimage
+
+Install the latest binaries:
+```bash
+yay slimevr-beta-bin
+```
+
+Install the SteamVR driver:
+```bash
+cd ~/Downloads
+wget https://github.com/SlimeVR/SlimeVR-OpenVR-Driver/releases/latest/download/slimevr-openvr-driver-x64-linux.zip
+
+cd ~/.steam/steam/steamapps/common/SteamVR/drivers && unzip ~/Downloads/slimevr-openvr-driver*
+```
+
+Install the feeder app
+```bash
+cd ~/Downloads
+
+wget https://github.com/SlimeVR/SlimeVR-Feeder-App/releases/latest/download/SlimeVR-Feeder-App-Linux.zip
+cd ~/.bin/ && unzip ~/Downloads/SlimeVR-Feeder*
+
+#patch feeder app manifest for linux
+cd ~/.bin/SlimeVR-Feeder* &&  sed -i '7i\ \t\t"binary_path_linux": "SlimeVR-Feeder-App",' ./manifest.vrmanifest
+
+#register it with SteamVR
+mkdir -p ~/bkup && cp ~/.steam/steam/config/appconfig.json ~/bkup/
+python3 -c "
+import json
+app_conf_fname = '$HOME/.steam/steam/config/appconfig.json'
+with open(app_conf_fname, 'r') as f:
+  app_config = json.load(f)
+app_config['manifest_paths'].append('$HOME/.bin/SlimeVR-Feeder-App-Linux/manifest.vrmanifest')
+with open(app_conf_fname, 'w') as f:
+  json.dump(app_config, f, indent=2)
+"
+```
+
+Now start SteamVR, and in the settings menu under "Startup / Shutdown", 
+enable the slimeVR feeder app as a startup overlay app.
 
 ## Face tracking
-Following: https://lvra-gitlab-io-802e4a.gitlab.io/docs/vrchat/facetracking/
+The LRVA group has a list of VRChat facetracking softwares: https://lvra.gitlab.io/docs/vrchat/facetracking/
 
-TODO
+### VRCFT Avalonia
+Cross-platform implementation of the windows VRC Face Tracking app.
+https://github.com/dfgHiatus/VRCFaceTracking.Avalonia
+
+v1.1.1.0 seems to be bugged: https://github.com/dfgHiatus/VRCFaceTracking.Avalonia/issues/47
+
+Also, make sure to start VRCFT Avalonia before starting VR Chat
+
+First, download the v1.0.0.0 AppImage from: 
+
+Install (v1.0.0.0 appimage):
+```bash
+#prereqs
+yay fuse2
+
+#assumes ~/.bin exists
+cd ~/.bin/
+wget https://github.com/dfgHiatus/VRCFaceTracking.Avalonia/releases/download/v1.0.0.0/VRCFaceTracking.Avalonia.Desktop.x64.AppImage
+
+#set the app image as executable
+chmod a+x ./VRCFaceTracking.Avalonia*
+```
+
+Add modules for your eye/face tracking solution
+
+Set autostart to on in the settings
+
+#### SteamVR
+In the SteamVR settings after connecting your headset, enable OS and sending of eye and face tracking info.
+Select 9015(ALT) as the output port.
+
+# SteamVR start script
+Starts slimevr, VRC Video Cacher, VRCFT Avalonia, and SteamVR. Also 
+restarts pipewire after Steam Link connects.
+```bash
+echo '#!/bin/fish
+
+#on keyboard interrupt, stop all subprocesses
+function kill_jobs
+  #send interrupt to all jobs
+  jobs -p | tail -n+1 | xargs kill -2
+  sleep 5
+  jobs -p | tail -n+1 | xargs kill -9
+end
+trap kill_jobs SIGINT
+
+slimevr &
+VRCVideoCacher &
+VRCFaceTracking.Avalonia.Desktop.x64.AppImage &
+
+sleep 0.5
+
+#start SteamVR
+steam steam://rungameid/250820 &
+
+#wait until steam link is started, then restart pipewire to use other audio 
+# (because Steam Link\'s audio is broken right now)
+while [ 1 ]
+  if [ "$(pgrep vrcompositor | wc -l)" -ne "0" ]
+    sleep 5
+    systemctl --user restart pipewire pipewire.socket wireplumber.service pipewire-pulse.service pipewire-pulse.socket
+    break
+  else
+    sleep 0.5
+  end
+end
+sleep infinity
+' > ~/.bin/vr_start.fish
+chmod a+x ~/.bin/vr_start.fish
+```
+
+# VRChat avatar creation software
+
+Reference: https://wiki.vronlinux.org/docs/vrchat/unity/
+
+Package installs:
+```bash
+yay blender #extra repo
+yay unityhub #AUR
+```
+
+## ALCOM
+Open source VRC Creator Companion
+
+```bash
+yay alcom-bin #AUR
+```
+
+## Unity setup
+
+Under Edit->Project Settings, go to the Player section. Uncheck the 
+"Auto Graphics API for Linux" box. Re-arrange the options such that the
+Vulkan API is first in the list.
+
+Otherwise, liltoon shaders will not render properly in the editor:
+https://github.com/lilxyzw/lilToon/issues/329
+
+You seem to have to do this every time you open your project :<
+
+### AppImage (doesn't seem to work, white screen issue as mentioned in the VRLA wiki)
+Download appimage from: https://vrc-get.anatawa12.com/en/alcom/
+
+```bash
+#assumes ~/.bin exists and is added to the path, and that the AppImage is in Downloads
+cd ~/.bin/
+mv ~/Downloads/alcom*.AppImage ./
+
+#set the app image as executable
+chmod a+x ./alcom*.AppImage
+```
 
 # Miscellaneous packages
 
 ```bash
 yay kicad
 yay code #visual studio code
+
+yay discord
 ```
 
 # Add Windows boot entry to bootloader
@@ -531,6 +757,7 @@ Reference: https://wiki.archlinux.org/title/Systemd-boot
 
 ```bash
 yay edk2-shell
+sudo mkdir /boot/EFI/tools/
 sudo cp /usr/share/edk2-shell/x64/Shell.efi /boot/EFI/tools/shellx64.efi
 echo '
 title    UEFI shell
