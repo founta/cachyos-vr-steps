@@ -112,8 +112,10 @@ asdf install protonge-rtsp latest
 ## VRChat
 In steam, I install:
 - VRChat
-- XSOverlay
-- OVR advanced settings
+- ~~XSOverlay~~
+- ~~OVR advanced settings~~
+  - XSOverlay and OVR advanced settings do not appear to be functional
+    in Linux :)
 
 1. Right click on VRChat -> Properties -> Compatibility
 2. Check "Force the use of a certain compatibility tool" and select GE proton RTSP
@@ -655,6 +657,70 @@ Add modules for your eye/face tracking solution
 
 Set autostart to on in the settings
 
+# WayVR
+https://github.com/wayvr-org/wayvr
+
+Overlay and playspace adjuster
+
+## Install and launching
+Install (AUR):
+```bash
+yay wayvr-git
+```
+
+WayVR needs to be launched after linking up your headset with eg Steam Link, ALVR, etc. 
+It defaults to autostarting after you launch it for the first time.
+
+When using Steam Link with audio issues (as of 3-22 on Arch-based distributions), disable WayVR autostart
+and manually start it up after restarting pipewire after Steam Link breaks it.
+
+Edit the controller bindings to bring up the WayVR overlay and playspace dragging features
+with Steam VR's bindings UI.
+
+## Input configuration
+When starting WayVR, an error will be emitted indicating issues with the mouse and keyboard, with instruction to resolve:
+
+Enable the uinput kernel module and add ourselves to the input group:
+```bash
+sudo usermod -a -G input $(whoami)
+echo "uinput" | sudo tee /etc/modules-load.d/uinput.conf
+```
+
+And reboot
+
+## Watch overlay timezone change
+Note: list available timezones by running `timedatectl list-timezones`
+
+```bash
+echo '
+timezones:
+- "Japan"
+- "Greenwich"
+' > ~/.config/wayvr/conf.d/clock.yaml
+```
+
+## Misc configuration
+
+Set "Handsfree mode" to None to remove the ~10s delay before being able
+to interact with WayVR's menus via controller.
+
+## Building from source
+ref: https://github.com/wayvr-org/wayvr/wiki/Building-from-Source
+
+Install dependencies as listed in the above document
+
+```bash
+cd ~/src
+git clone --recursive -b main git@github.com:wayvr-org/wayvr.git
+cd wayvr
+
+#make edits
+
+cargo build --release --no-default-features --features=wayland,openvr
+
+RUST_LOG=debug ./target/release/wayvr
+```
+
 #### SteamVR
 In the SteamVR settings after connecting your headset, enable OSC and sending of eye and face tracking info.
 Select 9015(ALT) as the output port.
@@ -685,10 +751,12 @@ steam steam://rungameid/250820 &
 
 #wait until steam link is started, then restart pipewire to use other audio 
 # (because Steam Link\'s audio is broken right now)
+#also start WayVR afterwards
 while [ 1 ]
   if [ "$(pgrep vrcompositor | wc -l)" -ne "0" ]
-    sleep 5
+    sleep 3
     systemctl --user restart pipewire pipewire.socket wireplumber.service pipewire-pulse.service pipewire-pulse.socket
+    wayvr &
     break
   else
     sleep 0.5
