@@ -288,7 +288,8 @@ Face tracking on
 
 ### Steam Link
 > [!CAUTION]
-> Steam Link has non-functional audio as of March 14 2026
+> Steam Link has non-functional audio as of March 24 2026 on recent versions of pipewire.
+> Downgrade pipewire and the packages that depend on it to 1.4.10 as a temporary workaround.
 >
 > It works for some, but they need to manually connect inputs/outputs
 > to the Steam Link audio devices. Try using the `helvum` or
@@ -313,6 +314,18 @@ sudo ufw allow 27036/udp
 sudo ufw allow 27036/tcp
 sudo ufw allow 27037/tcp
 ```
+
+Temporary workaround for non-functional audio (downgrade pipewire to 1.4.10)
+```bash
+yay downgrade
+sudo downgrade pipewire libpipewire gst-plugin-pipewire pipewire-pulse pipewire-audio pipewire-alsa
+
+#select 1.4.10 for all packages
+#add all packages to IgnorePkg
+
+#when steam link is fixed, remove the IgnorePkg line in /etc/pacman.conf
+```
+as described here: https://github.com/ValveSoftware/SteamVR-for-Linux/issues/873#issuecomment-4119509739
 
 #### Hopeless audio debugging notes
 CachyOS with the Noctalia+Niri desktop environment use the `pipewire` audio utility. 
@@ -732,11 +745,14 @@ restarts pipewire after Steam Link connects.
 echo '#!/bin/fish
 
 #on keyboard interrupt, stop all subprocesses
+#VRCFT Avalonia still seems to still run after killing like the others, so kill it separately
 function kill_jobs
   #send interrupt to all jobs
-  jobs -p | tail -n+1 | xargs kill -2
+  jobs -p | tail -n+1 | xargs kill -2 #first send them sigint
+  killall -s 2 VRCFaceTracking.Avalonia.Desktop
   sleep 5
-  jobs -p | tail -n+1 | xargs kill -9
+  jobs -p | tail -n+1 | xargs kill -9 #then kill them if they're still running
+  killall -s 9 VRCFaceTracking.Avalonia.Desktop
 end
 trap kill_jobs SIGINT
 
@@ -752,10 +768,12 @@ steam steam://rungameid/250820 &
 #wait until steam link is started, then restart pipewire to use other audio 
 # (because Steam Link\'s audio is broken right now)
 #also start WayVR afterwards
+# no need to restart pipewire when using v1.4.10
 while [ 1 ]
   if [ "$(pgrep vrcompositor | wc -l)" -ne "0" ]
-    sleep 3
-    systemctl --user restart pipewire pipewire.socket wireplumber.service pipewire-pulse.service pipewire-pulse.socket
+    sleep 2
+    #systemctl --user restart pipewire pipewire.socket wireplumber.service pipewire-pulse.service pipewire-pulse.socket
+    #sleep 0.5
     wayvr &
     break
   else
@@ -812,6 +830,9 @@ You seem to have to do this every time you open your project :<
 
 ```bash
 yay kicad
+yay kicad-library
+yay kicad-library-3d
+
 yay code #visual studio code
 
 yay discord
