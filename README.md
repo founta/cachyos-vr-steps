@@ -31,6 +31,8 @@ To find packages that contain the specified file: `yay -Fy {file name}`
 
 To remove packages: `yay -Rc {package name}`
 
+Autoremove (remove packages that were previously dependencies and are now not): `yay -Yc`
+
 # Multidisplay setup (Noctalia / Niri)
 Run the following to see your currently connected display configuration:
 
@@ -119,6 +121,11 @@ In steam, I install:
 
 1. Right click on VRChat -> Properties -> Compatibility
 2. Check "Force the use of a certain compatibility tool" and select GE proton RTSP
+
+Add the following symbolic link for pictures taken in game:
+```bash
+ln -s $HOME/.local/share/Steam/steamapps/compatdata/438100/pfx/drive_c/users/steamuser/Pictures/VRChat/ $HOME/Pictures/VRChat
+```
 
 ### VRC Video Cacher setup
 The Steam version of VRC Video Cacher was non-functional for me.
@@ -642,6 +649,21 @@ with open(app_conf_fname, 'w') as f:
 Now start SteamVR, and in the settings menu under "Startup / Shutdown", 
 enable the slimeVR feeder app as a startup overlay app.
 
+### TTY permissions
+Plug in a tracker and determine which group the serial interface uses:
+```bash
+ls -lhg /dev | grep tty
+sudo usermod -a -G uucp $USER #add your user to that group so it can access the serial port
+#reboot now
+sudo reboot now
+```
+
+### Firewall rules
+
+```bash
+sudo ufw allow 6969/udp #nice
+```
+
 ## Face tracking
 The LRVA group has a list of VRChat facetracking softwares: https://lvra.gitlab.io/docs/vrchat/facetracking/
 
@@ -791,28 +813,14 @@ Reference: https://wiki.vronlinux.org/docs/vrchat/unity/
 
 Package installs:
 ```bash
-yay blender #extra repo
 yay unityhub #AUR
 ```
 
 ## ALCOM
 Open source VRC Creator Companion
 
-### Install from AUR
 ```bash
 yay alcom-bin #AUR
-```
-
-### AppImage (doesn't seem to work, white screen issue as mentioned in the VRLA wiki)
-Download appimage from: https://vrc-get.anatawa12.com/en/alcom/
-
-```bash
-#assumes ~/.bin exists and is added to the path, and that the AppImage is in Downloads
-cd ~/.bin/
-mv ~/Downloads/alcom*.AppImage ./
-
-#set the app image as executable
-chmod a+x ./alcom*.AppImage
 ```
 
 ## Unity setup
@@ -824,7 +832,44 @@ Vulkan API is first in the list.
 Otherwise, liltoon shaders will not render properly in the editor:
 https://github.com/lilxyzw/lilToon/issues/329
 
-You seem to have to do this every time you open your project :<
+To make this permanent (because the above will revert every time you start Unity! :<),
+add the `--force-vulkan` Unity command line argument in ALCOM
+
+## Blender
+Download v4.0 from Steam -- install blender and set version to 4.0
+
+Follow the steps here: https://gist.github.com/DHCPCD9/adc02b13505cad36d42fb23e0816e1b5
+
+```bash
+cd ~/.steam/steam/steamapps/common/Blender/4.0/python/bin
+./python3.10 -m pip install scipy
+./python3.10 -m pip install -U pip
+
+cd ~/Downloads && wget https://github.com/sentfromspacevr/robust-weight-transfer/releases/download/v1.0.0/robust-weight-transfer-v1.0.0-bl3.1-4.0-linux.zip
+```
+
+Open blender and install the downloaded addon
+
+Load Mochi Fitter into your project and let it download blender. Do the following to have it use
+the previously downloaded blender instead
+```bash
+cd /path/to/your/project/BlenderTools/blender-4.0.2*
+echo '#!/usr/bin/env bash
+set -euo pipefail
+BLENDER="$HOME/.steam/steam/steamapps/common/Blender/blender"
+args=()
+for a in "$@"; do
+  args+=("$(echo ${a} | tr "\\" "/")")
+done
+
+exec "$BLENDER" "${args[@]}"
+' > blender.exe
+chmod a+x ./blender.exe
+```
+
+Windows ignores capitalization in file paths, and Linux does not. A few
+folks who create the mochi fitter profiles have the capitalization wrong
+and you will have to manually rename them.
 
 # Miscellaneous packages
 
@@ -836,6 +881,8 @@ yay kicad-library-3d
 yay code #visual studio code
 
 yay discord
+
+yay ntfs-3g #ntfs filesystem support
 ```
 
 # Add Windows boot entry to bootloader
